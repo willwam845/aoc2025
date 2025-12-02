@@ -31,17 +31,40 @@ pub fn part1(input: &str) -> u64 {
     let boundaries: Vec<(u64, u64, u32)> = parse_input(input);
     boundaries.iter().map(
         |(lb, ub, d)| {
-            if d % 2 != 0 { return 0 }
-            let inc = (10 as u64).pow(*d / 2) + 1;
-            // sum of the multiples of inc there are between lb and ub (inclusive)
-            let lower = if lb % inc == 0 { lb / inc } else { lb / inc + 1 };
-            let upper = ub / inc;
-            let res = inc * (sum_n(upper) - sum_n(lower - 1));
-            res
+            find_invalid(lb, ub, d, 2)
         }
     ).sum::<u64>()
 }
 
+pub fn is_prime_power(n: u32) -> bool {
+    return [2, 3, 4, 5, 7, 8, 9].contains(&n)
+}
+
+pub fn find_invalid(lb: &u64, ub: &u64, d: &u32, reps: u32) -> u64 {
+    if d % reps != 0 { return 0 }
+    let replen = d / reps;
+    let inc: u64 = (0..(d/replen)).map(|i| { (10 as u64).pow(i * replen) }).sum();
+    let lower = if lb % inc == 0 { lb / inc } else { lb / inc + 1 };
+    let upper = ub / inc;
+    inc * (sum_n(upper) - sum_n(lower - 1))
+}
+
+// we have the condition d <= 10
 pub fn part2(input: &str) -> u64 {
-    0
+    let boundaries: Vec<(u64, u64, u32)> = parse_input(input);
+    boundaries.iter().map(
+        |(lb, ub, d)| {
+            if *d == 1 {
+                0
+            } else if is_prime_power(*d) {
+                let p = (2..=*d).find(|&i| d % i == 0).unwrap_or(*d);
+                find_invalid(lb, ub, d, p)
+            } else {
+                // d = pq, since d <= 10
+                let factors= (2..*d).filter(|fac| { d % fac == 0});
+                let pq = factors.map(|reps| { find_invalid(lb, ub, d, reps)}).sum::<u64>();
+                pq - find_invalid(lb, ub, d, *d)
+            }
+        }
+    ).sum()
 }
