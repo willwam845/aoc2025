@@ -2,7 +2,7 @@ mod util;
 
 use seq_macro::seq;
 
-type AocFn = fn(&str) -> either::Either<u64, String>;
+type AocFn = fn(&str) -> u64;
 
 seq! {
     N in 01..=01 {
