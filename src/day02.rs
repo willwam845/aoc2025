@@ -1,4 +1,6 @@
 use std::cmp::{max, min};
+use prime_factorization::Factorization;
+use gcd::Gcd;
 
 pub fn parse_input(input: &str) -> Vec<(u64, u64, u32)> {
     input.split(",").flat_map(
@@ -65,6 +67,28 @@ pub fn part2(input: &str) -> u64 {
                 let pq = factors.map(|reps| { find_invalid(lb, ub, d, reps)}).sum::<u64>();
                 pq - find_invalid(lb, ub, d, *d)
             }
+        }
+    ).sum()
+}
+
+// attempted generalized solution...
+pub fn part2_a(input: &str) -> u64 {
+    let boundaries: Vec<(u64, u64, u32)> = parse_input(input);
+    boundaries.iter().map(
+        |(lb, ub, d)| {
+            if *d == 1 { return 0 };
+            let facs = Factorization::run(*d).prime_factor_repr();
+            let maximals: Vec<u32> = facs.iter().map(|(p, _n)| { *d / p }).collect();
+            let n = maximals.len();
+            let mut res = maximals.iter().map(|bsize| { find_invalid(lb, ub, d, *d / bsize) }).sum::<u64>();
+            
+            // fake inclusion exclusion principle... the general solution would use it but properly
+            for i in 0..n {
+                for j in i+1..n {
+                    res -= find_invalid(lb, ub, d, d / maximals[i].gcd(maximals[j]));
+                }
+            }
+            res
         }
     ).sum()
 }

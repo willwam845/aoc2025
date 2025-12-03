@@ -4,5 +4,18 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+criterion = "0.8.0"
 either = "1.15.0"
+gcd = "2.3.0"
+prime_factorization = "1.0.5"
 seq-macro = "0.3.6"
+
+[profile.bench]
+opt-level = 3
+debug = 2
+lto = "thin"
+codegen-units = 1
+
+[[bench]]
+name = "bench"
+harness = false
