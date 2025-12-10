@@ -42,6 +42,9 @@ pub fn part1(input: &str) -> u64 {
 }
 
 pub fn part2(input: &str) -> u64 {
-    0
+    let lines = parse_input(input);
+    lines.iter().map(|line| {
+        solve(&line[..], 12usize)
+    }).sum()
 }
 
