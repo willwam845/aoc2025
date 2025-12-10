@@ -66,5 +66,7 @@ pub fn part1(input: &str) -> u64 {
 }
 
 pub fn part2(input: &str) -> u64 {
-    0
+    let (ranges, _items) = parse_input(input);
+    let new_ranges = non_overlapping_ranges(ranges);
+    new_ranges.into_iter().map(|(l, u)| { u - l + 1}).sum()
 }
