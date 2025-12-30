@@ -1,22 +1,21 @@
 pub fn parse_input(input: &str) -> (Vec<(u64, u64)>, Vec<u64>) {
     let (range_str, item_str) = input.split_once("\n\n").unwrap();
-    let ranges = range_str.lines().map(|line| {
-        let (lb_s, ub_s) = line.split_once("-").unwrap();
-        (lb_s.parse().unwrap(),  ub_s.parse().unwrap())
-    }).collect();
+    let ranges = range_str
+        .lines()
+        .map(|line| {
+            let (lb_s, ub_s) = line.split_once("-").unwrap();
+            (lb_s.parse().unwrap(), ub_s.parse().unwrap())
+        })
+        .collect();
 
-    let items = item_str.lines().map(|line| {
-        line.parse().unwrap()
-    }).collect();
+    let items = item_str.lines().map(|line| line.parse().unwrap()).collect();
 
     (ranges, items)
 }
 
 pub fn non_overlapping_ranges(mut ranges: Vec<(u64, u64)>) -> Vec<(u64, u64)> {
     let mut new_ranges = vec![];
-    ranges.sort_by(|(l1, u1), (l2, u2)|{
-        l1.cmp(l2)
-    });
+    ranges.sort_by(|(l1, _), (l2, _)| l1.cmp(l2));
     let mut prev_u = 0u64;
     for (l, u) in ranges.iter() {
         // just need to compare against the previous range....
@@ -47,9 +46,21 @@ pub fn query_ranges(ranges: &[(u64, u64)], val: u64) -> bool {
     while ub > lb {
         let mp = (lb + ub) / 2;
         let (l, u) = ranges[mp];
-        if l <= val && val <= u { return true }
-        else if val < l { if mp == 0 { return false } else { ub = mp - 1 } }
-        else { if mp == ub { return false } else { lb = mp + 1 } }
+        if l <= val && val <= u {
+            return true;
+        } else if val < l {
+            if mp == 0 {
+                return false;
+            } else {
+                ub = mp - 1
+            }
+        } else {
+            if mp == ub {
+                return false;
+            } else {
+                lb = mp + 1
+            }
+        }
     }
 
     let (l, u) = ranges[lb];
@@ -59,14 +70,17 @@ pub fn query_ranges(ranges: &[(u64, u64)], val: u64) -> bool {
 pub fn part1(input: &str) -> u64 {
     let (ranges, items) = parse_input(input);
     let new_ranges = non_overlapping_ranges(ranges);
-    items.into_iter().filter(|item| {
-        let res = query_ranges(&new_ranges, *item);
-        res
-    }).count() as u64
+    items
+        .into_iter()
+        .filter(|item| {
+            let res = query_ranges(&new_ranges, *item);
+            res
+        })
+        .count() as u64
 }
 
 pub fn part2(input: &str) -> u64 {
     let (ranges, _items) = parse_input(input);
     let new_ranges = non_overlapping_ranges(ranges);
-    new_ranges.into_iter().map(|(l, u)| { u - l + 1}).sum()
+    new_ranges.into_iter().map(|(l, u)| u - l + 1).sum()
 }
