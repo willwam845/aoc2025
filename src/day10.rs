@@ -112,7 +112,7 @@ pub fn part2(input: &str) -> u64 {
     machines
         .iter()
         .map(|machine: &Machine| {
-            // println!("{machine:?}");
+            println!("{machine:?}");
             let bits = machine.lights;
             let buttons: Vec<Vec<_>> = machine
                 .buttons
@@ -185,11 +185,8 @@ pub fn part2(input: &str) -> u64 {
                 Box::new(max_presses.iter().map(|&n| 0..n).multi_cartesian_product())
             };
 
-            let mut mininum_presses: f64 = MAX;
-            let mut min_press_vec = vec![];
-            let brute_size: usize = ranges.try_len().unwrap();
-            println!("brute size: {brute_size:?}");
-            a_rref.print();
+            let mut minimum_presses: f64 = MAX;
+            let _brute_size: usize = ranges.try_len().unwrap();
 
             for combo in ranges {
                 let mut press_counts = vec![0.0; num_buttons];
@@ -220,13 +217,12 @@ pub fn part2(input: &str) -> u64 {
                 if press_counts.iter().all(|x| x.round() >= 0.0)
                     && is_integer_vector(press_counts.clone())
                 {
-                    min_press_vec = press_counts.clone();
-                    mininum_presses = mininum_presses.min(total_presses.round())
+                    minimum_presses = minimum_presses.min(total_presses.round())
                 }
             }
-            println!("{min_press_vec:?}");
-
-            mininum_presses as u64
+            
+            println!("{minimum_presses:?}");
+            minimum_presses as u64
         })
         .sum()
 }
