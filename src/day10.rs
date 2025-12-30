@@ -1,119 +1,232 @@
+use std::{f64::MAX, iter::zip};
 
-use core::num;
-
-use nalgebra::{DMatrix, DVector, Dyn};
+use itertools::Itertools;
+use peroxide::fuga::*;
 
 #[derive(Debug)]
 pub struct Machine {
     pub lights: usize,
     pub init: u16,
     pub buttons: Vec<u16>,
-    pub joltages: Vec<f64>
+    pub joltages: Vec<f64>,
 }
 
 pub fn parse_input(input: &str) -> Vec<Machine> {
-    input.lines().map(|line| {
-        let (init_str, rest) = line.split_once(" ").unwrap();
-        let (buttons_str, joltages_str) = rest.rsplit_once(" ").unwrap();
-        
-        let init = {
-            let mut init_chars = init_str.chars();
-            init_chars.next(); init_chars.next_back();
-            init_chars.enumerate().map(|(i, x)| {
-                ((x == '#') as u16) * 1 << i
-            }).sum()
-        };
+    input
+        .lines()
+        .map(|line| {
+            let (init_str, rest) = line.split_once(" ").unwrap();
+            let (buttons_str, joltages_str) = rest.rsplit_once(" ").unwrap();
 
-        let buttons = buttons_str.split_ascii_whitespace().into_iter().map(|b_str| {
-            let mut chars = b_str.chars();   
-            chars.next(); chars.next_back();
-            chars.as_str().split(",").into_iter().map(|bit| {
-                1 << bit.parse::<u8>().unwrap()
-            }).sum()
-        }).collect();
+            let init = {
+                let mut init_chars = init_str.chars();
+                init_chars.next();
+                init_chars.next_back();
+                init_chars
+                    .enumerate()
+                    .map(|(i, x)| ((x == '#') as u16) * 1 << i)
+                    .sum()
+            };
 
-        let joltages = {
-            let mut chars = joltages_str.chars();   
-            chars.next(); chars.next_back();
-            chars.as_str().split(",").into_iter().map(|v| { v.parse::<f64>().unwrap() }).collect()
-        };
-        
-        Machine {
-            lights: init_str.len() - 2,
-            init,
-            buttons,
-            joltages
-        }
-    }).collect()
+            let buttons = buttons_str
+                .split_ascii_whitespace()
+                .into_iter()
+                .map(|b_str| {
+                    let mut chars = b_str.chars();
+                    chars.next();
+                    chars.next_back();
+                    chars
+                        .as_str()
+                        .split(",")
+                        .into_iter()
+                        .map(|bit| 1 << bit.parse::<u8>().unwrap())
+                        .sum()
+                })
+                .collect();
 
+            let joltages = {
+                let mut chars = joltages_str.chars();
+                chars.next();
+                chars.next_back();
+                chars
+                    .as_str()
+                    .split(",")
+                    .into_iter()
+                    .map(|v| v.parse::<f64>().unwrap())
+                    .collect()
+            };
+
+            Machine {
+                lights: init_str.len() - 2,
+                init,
+                buttons,
+                joltages,
+            }
+        })
+        .collect()
 }
 
 pub fn part1(input: &str) -> u64 {
     let machines = parse_input(input);
-    machines.iter().map(|machine| {
-        find_dependent_combinations(&machine.buttons, machine.init)
-        .into_iter().map(|i| { (i as u64).count_ones() as u64 }).min().unwrap()
-    }).sum()
+    machines
+        .iter()
+        .map(|machine| {
+            find_dependent_combinations(&machine.buttons, machine.init)
+                .into_iter()
+                .map(|i| (i as u64).count_ones() as u64)
+                .min()
+                .unwrap()
+        })
+        .sum()
 }
 
 pub fn to_bits(v: u16, n: usize) -> Vec<f64> {
-    (0..n).map(|i| { (v >> i & 1) as f64 }).collect()
+    (0..n).map(|i| (v >> i & 1) as f64).collect()
 }
 
 pub fn find_dependent_combinations(values: &Vec<u16>, initial: u16) -> Vec<u16> {
     let vals = &values[..];
     let n = vals.len();
-     (1..1 << n).filter(|i| {
-        (0..n).map(|bit| {
-            if i & 1 << bit > 0 { vals[bit] }
-            else { 0 } 
-        }).fold(initial, |x, y| { x ^ y }) == 0
-     }).map(|x| { x as u16 }).collect()
+    (1..1 << n)
+        .filter(|i| {
+            (0..n)
+                .map(|bit| if i & 1 << bit == 0 { 0 } else { vals[bit] })
+                .fold(initial, |x, y| x ^ y)
+                == 0
+        })
+        .map(|x| x as u16)
+        .collect()
 }
 
-// a hot mess of attempts
-// VAGUE IDEA: we want to try and find linearly independent sets of the buttons
-// then we can try and solve a matrix equation
-// however, since we need to find the smallest, we need to consider all of the linearly
-// independent sets
+pub fn is_integer(v: f64) -> bool {
+    (v - v.round()).abs() < 1e-2
+}
 
-// i thought we could be smart and see what the linear relations are to determine what subsets are valid
-// but apparently that doesn't actually work
+pub fn is_integer_vector(vec: Vec<f64>) -> bool {
+    let error: f64 = vec.iter().map(|v| (v - v.round()).abs()).sum();
+    error < 1e-2
+}
+
 pub fn part2(input: &str) -> u64 {
     let machines = parse_input(input);
-    machines.iter().map(|machine| {
-        let bits = machine.lights;
+    machines
+        .iter()
+        .map(|machine: &Machine| {
+            // println!("{machine:?}");
+            let bits = machine.lights;
+            let buttons: Vec<Vec<_>> = machine
+                .buttons
+                .clone()
+                .into_iter()
+                .map(|v| to_bits(v, bits))
+                .collect();
+            let num_buttons = buttons.len();
+            let a = py_matrix(buttons).t();
+            let a_aug: Vec<Vec<_>> = machine
+                .joltages
+                .iter()
+                .enumerate()
+                .map(|(i, v)| {
+                    let mut r = a.row(i);
+                    r.push(*v);
+                    r
+                })
+                .collect();
 
-        println!("{:?}", machine);
-        let linear_relations = find_dependent_combinations(&machine.buttons, 0);
-        let buttons = machine.buttons.clone().into_iter().map(|v| { 
-            to_bits(v, bits) 
-        });
-        let num_buttons = buttons.len();
-        let bad_dims = (usize::BITS - (linear_relations.len()).leading_zeros()) as usize;
-        let good_dims = num_buttons - bad_dims;
+            let mut a_rref = py_matrix(a_aug).rref();
 
-        let b: nalgebra::Matrix<f64, Dyn, nalgebra::Const<1>, nalgebra::VecStorage<f64, Dyn, nalgebra::Const<1>>> = DVector::from_iterator(bits, machine.joltages.clone());
-        ((1 << good_dims) - 1..1 << num_buttons).map(|k| {
-            let row_count = (k as u32).count_ones() as usize;
-            let rows = buttons.clone().enumerate().filter(|(i, _row)| {
-                k & 1 << i > 0
-            }).map(|(_i, row)| { row }).flatten();
-            let a_m = DMatrix::from_row_iterator_generic(
-                Dyn(row_count), Dyn(bits), rows.into_iter()
-            ).transpose();
-            let decomp = a_m.clone().svd(true, true);
-            let x = decomp.solve(&b, 1e-10).unwrap();
-            let a_mx = a_m * x.clone();
-            (a_mx, x)
-        }).filter(|(am_x, x)| {
-            x.iter().all(|x_val| { 
-                (x_val.round() - x_val).abs() < 1e-2 && x_val.round() >= 0.0
-            }) && am_x.iter().zip(&b).map(|(a_v, b_v)| {
-                (a_v - b_v).abs()
-            }).sum::<f64>() < 1.0
-        }).map(|(_a_mx, x)| {
-            x.map(|x_val| { x_val.round() as u64 }).sum()
-        }).min().unwrap()
-    }).sum()
+            let mut free_button_indices = vec![];
+            let mut curr_target = 0usize;
+            for i in 0..bits {
+                let row = a_rref.row(i);
+                while (curr_target < num_buttons) && ((row[curr_target] - 1.0).abs() > 1e-5) {
+                    free_button_indices.push(curr_target);
+                    curr_target += 1;
+                }
+
+                let k: f64 = (1..1000)
+                    .find(|k| {
+                        let modified_row: Vec<_> = row.iter().map(|x| (*k as f64) * x).collect();
+                        is_integer_vector(modified_row)
+                    })
+                    .unwrap_or(1) as f64;
+
+                if k > 1.0 {
+                    let modified_row: Vec<_> = row.iter().map(|x| (k * x).round()).collect();
+                    a_rref.subs_row(i, &modified_row[..]);
+                }
+                curr_target += 1;
+            }
+            for i in curr_target..num_buttons {
+                free_button_indices.push(i)
+            }
+
+            let max_presses: Vec<_> = {
+                let free_buttons = free_button_indices.iter().map(|i| machine.buttons[*i]);
+                free_buttons
+                    .map(|v| {
+                        let bits = to_bits(v, bits);
+                        let max_presses = machine
+                            .joltages
+                            .iter()
+                            .zip(bits)
+                            .filter(|(_joltage, bit)| *bit as u8 == 1)
+                            .map(|(joltage, _bit)| *joltage as u16)
+                            .min()
+                            .unwrap_or(0);
+                        max_presses
+                    })
+                    .collect()
+            };
+
+            let ranges: Box<dyn Iterator<Item = _>> = if max_presses.is_empty() {
+                Box::new(std::iter::once(vec![]))
+            } else {
+                Box::new(max_presses.iter().map(|&n| 0..n).multi_cartesian_product())
+            };
+
+            let mut mininum_presses: f64 = MAX;
+            let mut min_press_vec = vec![];
+            let brute_size: usize = ranges.try_len().unwrap();
+            println!("brute size: {brute_size:?}");
+            a_rref.print();
+
+            for combo in ranges {
+                let mut press_counts = vec![0.0; num_buttons];
+                for (i, v) in zip(free_button_indices.iter(), combo) {
+                    press_counts[*i] = v as f64
+                }
+
+                for i in (0..bits).rev() {
+                    let row = a_rref.row(i);
+                    let (target_button, times) = row
+                        .iter()
+                        .enumerate()
+                        .find(|(_, coeff)| coeff.abs() > 1e-2)
+                        .unwrap_or((num_buttons, &0.0));
+
+                    if target_button == num_buttons {
+                        continue;
+                    }
+
+                    let target: f64 = row[num_buttons]
+                        - (target_button + 1..num_buttons)
+                            .map(|b| row[b] * press_counts[b])
+                            .sum::<f64>();
+                    press_counts[target_button] = target / times;
+                }
+
+                let total_presses: f64 = press_counts.iter().sum();
+                if press_counts.iter().all(|x| x.round() >= 0.0)
+                    && is_integer_vector(press_counts.clone())
+                {
+                    min_press_vec = press_counts.clone();
+                    mininum_presses = mininum_presses.min(total_presses.round())
+                }
+            }
+            println!("{min_press_vec:?}");
+
+            mininum_presses as u64
+        })
+        .sum()
 }
