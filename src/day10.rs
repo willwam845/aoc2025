@@ -112,7 +112,6 @@ pub fn part2(input: &str) -> u64 {
     machines
         .iter()
         .map(|machine: &Machine| {
-            println!("{machine:?}");
             let bits = machine.lights;
             let buttons: Vec<Vec<_>> = machine
                 .buttons
@@ -182,7 +181,7 @@ pub fn part2(input: &str) -> u64 {
             let ranges: Box<dyn Iterator<Item = _>> = if max_presses.is_empty() {
                 Box::new(std::iter::once(vec![]))
             } else {
-                Box::new(max_presses.iter().map(|&n| 0..n).multi_cartesian_product())
+                Box::new(max_presses.iter().map(|&n| 0..=n).multi_cartesian_product())
             };
 
             let mut minimum_presses: f64 = MAX;
@@ -220,8 +219,7 @@ pub fn part2(input: &str) -> u64 {
                     minimum_presses = minimum_presses.min(total_presses.round())
                 }
             }
-            
-            println!("{minimum_presses:?}");
+
             minimum_presses as u64
         })
         .sum()
