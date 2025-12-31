@@ -6,41 +6,38 @@ pub fn parse_input(input: &str) -> Vec<Vec<bool>> {
         .map(|line| line.chars().map(|c| c == '@').collect())
         .collect()
 }
+const DIFFS: [(isize, isize); 8] = [
+    (-1, -1), (0, -1), (1, -1),
+    (-1, 0),           (1,  0),
+    (-1, 1),  (0,  1), (1,  1),
+];
 
 pub fn part1(input: &str) -> u64 {
     let grid = parse_input(input);
     let height = grid.len() as isize;
     let width = grid[0].len() as isize;
-    
-    let diffs: Vec<(isize, isize)> = iproduct!(-1..=1, -1..=1)
-        .filter(|(x, y)| *x != 0 || *y != 0)
-        .collect();
 
-    let accessible: Vec<_> = iproduct!(0..height, 0..width)
-        .filter(|(x, y)| {
-            if !grid[*y as usize][*x as usize] {
-                return false;
-            }
+    let accessible = iproduct!(0..height, 0..width).filter(|&(x, y)| {
+        if !grid[y as usize][x as usize] {
+            return false;
+        }
 
-            let adjacent: Vec<_> = diffs
-                .iter()
-                .filter(|(dx, dy)| {
-                    let nx: isize = x + *dx;
-                    let ny: isize = y + *dy;
-                    if !(0..width).contains(&nx) || !(0..height).contains(&ny) {
-                        return true;
-                    }
+        let adjacent: Vec<_> = DIFFS
+            .iter()
+            .filter_map(|&(dx, dy)| {
+                let nx = usize::try_from(x + dx).ok()?;
+                let ny = usize::try_from(y + dy).ok()?;
+                Some(grid.get(ny)?.get(nx)?)
+            })
+            .filter(|&&cell| cell)
+            .collect();
 
-                    !grid[ny as usize][nx as usize]
-                })
-                .collect();
-            adjacent.len() > 4
-        })
-        .collect();
+        adjacent.len() < 4
+    });
 
-    accessible.len() as u64
+    accessible.count() as u64
 }
 
-pub fn part2(_input: &str) -> u64 {
+pub fn part2(input: &str) -> u64 {
     0
 }
