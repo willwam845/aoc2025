@@ -11,6 +11,9 @@ pub struct Machine {
     pub joltages: Vec<f64>,
 }
 
+const ERROR_MARGIN: f64 = 1e-5;
+const NORMALIZATION_BRUTE_MAX: i32 = 100;
+
 pub fn parse_input(input: &str) -> Vec<Machine> {
     input
         .lines()
@@ -99,12 +102,12 @@ pub fn find_dependent_combinations(values: &Vec<u16>, initial: u16) -> Vec<u16> 
 }
 
 pub fn is_integer(v: f64) -> bool {
-    (v - v.round()).abs() < 1e-2
+    (v - v.round()).abs() < ERROR_MARGIN
 }
 
 pub fn is_integer_vector(vec: Vec<f64>) -> bool {
     let error: f64 = vec.iter().map(|v| (v - v.round()).abs()).sum();
-    error < 1e-2
+    error < ERROR_MARGIN
 }
 
 pub fn part2(input: &str) -> u64 {
@@ -138,12 +141,13 @@ pub fn part2(input: &str) -> u64 {
             let mut curr_target = 0usize;
             for i in 0..bits {
                 let row = a_rref.row(i);
-                while (curr_target < num_buttons) && ((row[curr_target] - 1.0).abs() > 1e-5) {
+                while (curr_target < num_buttons) && ((row[curr_target] - 1.0).abs() > ERROR_MARGIN)
+                {
                     free_button_indices.push(curr_target);
                     curr_target += 1;
                 }
 
-                let k: f64 = (1..1000)
+                let k: f64 = (1..NORMALIZATION_BRUTE_MAX)
                     .find(|k| {
                         let modified_row: Vec<_> = row.iter().map(|x| (*k as f64) * x).collect();
                         is_integer_vector(modified_row)
@@ -198,7 +202,7 @@ pub fn part2(input: &str) -> u64 {
                     let (target_button, times) = row
                         .iter()
                         .enumerate()
-                        .find(|(_, coeff)| coeff.abs() > 1e-2)
+                        .find(|(_, coeff)| coeff.abs() > ERROR_MARGIN)
                         .unwrap_or((num_buttons, &0.0));
 
                     if target_button == num_buttons {
